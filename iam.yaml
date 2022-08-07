@@ -3,15 +3,14 @@
 # stack-name iam-roles-eks-${Environment}
 
 AWSTemplateFormatVersion: "2010-09-09"
-###########################################################################
-# Section: Description
-###########################################################################
+
+############################### Section: Description #######################
+
 Description: >
   For eks cluster
 
-###########################################################################
-# Section: Metadata
-###########################################################################
+################################ Section: Metadata #########################
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -31,10 +30,9 @@ Metadata:
         default: "The environment where the resources will be created"
       ProductName:
         default: "Name of the Product"
+        
+################################ Section: Parameters #########################
 
-###########################################################################
-# Section: Parameters
-###########################################################################
 Parameters:
   Environment:
     Description: "Environment"
@@ -54,9 +52,8 @@ Parameters:
     AllowedValues:
      - cloudtech
 
-###########################################################################
-# Section: Resources
-###########################################################################
+########################### Section: Resources ############################
+
 Resources:
   # # EKS Cluster IAM Role
   EKSAssumeRole:
@@ -119,9 +116,8 @@ Resources:
         - 'arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy'
         - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
 
-###########################################################################
-# Section: Outputs
-###########################################################################
+############################## Section: Outputs ###########################
+
 Outputs:
   EksRole:
     Description: "EKS Role"
