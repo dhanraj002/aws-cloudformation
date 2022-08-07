@@ -3,16 +3,15 @@
 # stack-name: vpc-networking-${Environment}
 
 AWSTemplateFormatVersion: "2010-09-09"
-###########################################################################
-# Section: Description
-###########################################################################
+
+############################### Section: Description #######################
+
 Description: >
   Amazon Virtual Private Cloud (VPC) is a service that lets you launch AWS resources in 
   a logically isolated virtual network that you define.
 
-###########################################################################
-# Section: Metadata
-###########################################################################
+################################ Section: Metadata #########################
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -41,9 +40,8 @@ Metadata:
       MultiNatEnable:
         default: "Want to enable multiple NAT Gateway ?"
 
-###########################################################################
-# Section: Parameters
-###########################################################################
+################################ Section: Parameters #########################
+
 Parameters:
   Environment:
     Description: 'Environment Name'
@@ -67,17 +65,14 @@ Parameters:
       - true
       - false
     
-###########################################################################
-# Section: Conditions
-###########################################################################
+########################### Section: Conditions ######################
+
 Conditions:
   SingleNat: !Equals [ !Ref MultiNatEnable, "false" ]
   MultiNat: !Equals [ !Ref MultiNatEnable, "true" ]
 
+########################### Section: Mappings #############################
 
-###########################################################################
-# Section: Mappings
-###########################################################################
 Mappings:
   EnvironmentNetworkMap:
     dev:
@@ -111,9 +106,8 @@ Mappings:
       PrivateSubnetBCidr: 10.20.128.0/19
       PrivateSubnetCCidr: 10.20.160.0/19
 
-###########################################################################
-# Section: Resources
-###########################################################################
+########################### Section: Resources ############################
+
 Resources:
   VPC:
     Type: 'AWS::EC2::VPC'
@@ -254,7 +248,7 @@ Resources:
         - Key: Provisioner
           Value: cloudformation
 
-  ################### Primary NAT ###############
+  ################### Primary NAT ############################
   EIPA:
     Type: 'AWS::EC2::EIP'
     Properties:
@@ -363,9 +357,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "cf-${ProductName}-${Environment}-private-rtC"
-  #############################################################################
-  ##### ROUTE TABLE ASSOCIATIONS #####
-  #############################################################################  
+  
+  ################### ROUTE TABLE ASSOCIATIONS ################################
 
   RouteTableAssociationPublicA:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
@@ -426,7 +419,7 @@ Resources:
       DestinationCidrBlock: "0.0.0.0/0"
       NatGatewayId: !Ref NatGatewayA
 
-  ######## Mutiple Routes
+  ######## Mutiple Routes ######################
   # Conditionally created if MultiNatEnable is true
   PrivateRouteTableInternetRouteA:
     Condition: MultiNat
@@ -452,10 +445,8 @@ Resources:
       DestinationCidrBlock: "0.0.0.0/0"
       NatGatewayId: !Ref NatGatewayC
   
+############################## Section: Outputs ###########################
 
-###########################################################################
-# Section: Outputs
-###########################################################################
 Outputs:
   VPC:
     Description: 'VPC.'
