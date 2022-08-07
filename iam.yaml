@@ -1,0 +1,142 @@
+---
+# Version: 1.0
+# stack-name iam-roles-eks-${Environment}
+
+AWSTemplateFormatVersion: "2010-09-09"
+###########################################################################
+# Section: Description
+###########################################################################
+Description: >
+  For eks cluster
+
+###########################################################################
+# Section: Metadata
+###########################################################################
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "Environment"
+      Parameters:
+        - Environment    
+    -
+      Label:
+        default: "Prodcut Parameter"
+      Parameters:
+        - ProductName
+
+    ParameterLabels:
+      Environment:
+        default: "The environment where the resources will be created"
+      ProductName:
+        default: "Name of the Product"
+
+###########################################################################
+# Section: Parameters
+###########################################################################
+Parameters:
+  Environment:
+    Description: "Environment"
+    Type: String
+    ConstraintDescription: "Must be in the set of allowed values"
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - production
+      - taskcatTest
+
+  ProductName:
+    Type: String
+    Description: "product Name"
+    Default: cloudtech
+    AllowedValues:
+     - cloudtech
+
+###########################################################################
+# Section: Resources
+###########################################################################
+Resources:
+  # # EKS Cluster IAM Role
+  EKSAssumeRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "cf-${ProductName}-${Environment}-eks-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "eks.amazonaws.com"
+                - "eks-fargate-pods.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEKSClusterPolicy'
+        - 'arn:aws:iam::aws:policy/AmazonEKSVPCResourceController'
+        - 'arn:aws:iam::aws:policy/AmazonEKSServicePolicy'
+
+  # IAM Role for EKS Fargate Profile
+
+  EKSFargateRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "cf-${ProductName}-${Environment}-eks-fargate-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "eks.amazonaws.com"
+                - "eks-fargate-pods.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy'
+        - 'arn:aws:iam::aws:policy/AmazonEKSVPCResourceController'
+        - 'arn:aws:iam::aws:policy/AmazonEKSClusterPolicy'
+
+  # IAM Role for EKS eks-manged node
+
+  EKSNodegroupRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "cf-${ProductName}-${Environment}-eks-nodegroup-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy'
+        - 'arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
+
+###########################################################################
+# Section: Outputs
+###########################################################################
+Outputs:
+  EksRole:
+    Description: "EKS Role"
+    Value: !GetAtt ["EKSAssumeRole", "Arn"]
+    Export:
+      Name: !Sub "${ProductName}-${Environment}-eks-role"
+
+  EksFargateRole:
+    Description: "EKS fargate Role"
+    Value: !GetAtt ["EKSFargateRole","Arn"]
+    Export:
+      Name: !Sub "${ProductName}-${Environment}-eks-fargate-role"
+  
+  EksNodegroupRole:
+    Description: "EKS Nodegroup Role"
+    Value: !GetAtt ["EKSNodegroupRole","Arn"]
+    Export:
+      Name: !Sub "${ProductName}-${Environment}-eks-nodegroup-role"

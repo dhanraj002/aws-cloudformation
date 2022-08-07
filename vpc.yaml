@@ -1,0 +1,516 @@
+---
+# Version: 1.0
+# stack-name: vpc-networking-${Environment}
+
+AWSTemplateFormatVersion: "2010-09-09"
+###########################################################################
+# Section: Description
+###########################################################################
+Description: >
+  Amazon Virtual Private Cloud (VPC) is a service that lets you launch AWS resources in 
+  a logically isolated virtual network that you define.
+
+###########################################################################
+# Section: Metadata
+###########################################################################
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - 
+      Label:
+        default: "VPC Parameters"
+      Parameters:
+        - Environment
+    -
+      Label:
+        default: "Prodcut Parameter"
+      Parameters:
+        - ProductName
+
+    -
+      Label:
+        default: "Multi NAT Setting"
+      Parameters:
+        - MultiNatEnable
+
+    ParameterLabels:    
+      Environment:
+        default: "The environment where the resources will be created"
+      ProductName:
+        default: "Name of the Product"
+      MultiNatEnable:
+        default: "Want to enable multiple NAT Gateway ?"
+
+###########################################################################
+# Section: Parameters
+###########################################################################
+Parameters:
+  Environment:
+    Description: 'Environment Name'
+    Type: String
+    AllowedValues:
+      - dev
+      - qa
+      - production
+    Default: dev
+  ProductName:
+    Type: String
+    Description: "product Name"
+    AllowedValues:
+     - cloudtech
+    Default: cloudtech
+  MultiNatEnable:
+    Type: String
+    Description: "Multi Nat for high aviliablity"
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    
+###########################################################################
+# Section: Conditions
+###########################################################################
+Conditions:
+  SingleNat: !Equals [ !Ref MultiNatEnable, "false" ]
+  MultiNat: !Equals [ !Ref MultiNatEnable, "true" ]
+
+
+###########################################################################
+# Section: Mappings
+###########################################################################
+Mappings:
+  EnvironmentNetworkMap:
+    dev:
+      vpcCidr: 10.0.0.0/16
+
+      PublicSubnetACidr: 10.0.0.0/19
+      PublicSubnetBCidr: 10.0.32.0/19
+      PublicSubnetCCidr: 10.0.64.0/19
+
+      PrivateSubnetACidr: 10.0.96.0/19
+      PrivateSubnetBCidr: 10.0.128.0/19
+      PrivateSubnetCCidr: 10.0.160.0/19
+
+    qa:
+      vpcCidr: 10.10.0.0/16
+      PublicSubnetACidr: 10.10.0.0/19
+      PublicSubnetBCidr: 10.10.32.0/19
+      PublicSubnetCCidr: 10.10.64.0/19
+
+      PrivateSubnetACidr: 10.10.96.0/19
+      PrivateSubnetBCidr: 10.10.128.0/19
+      PrivateSubnetCCidr: 10.10.160.0/19
+
+    production:
+      vpcCidr: 10.20.0.0/16
+      PublicSubnetACidr: 10.20.0.0/19
+      PublicSubnetBCidr: 10.20.32.0/19
+      PublicSubnetCCidr: 10.20.64.0/19
+
+      PrivateSubnetACidr: 10.20.96.0/19
+      PrivateSubnetBCidr: 10.20.128.0/19
+      PrivateSubnetCCidr: 10.20.160.0/19
+
+###########################################################################
+# Section: Resources
+###########################################################################
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "vpcCidr"]
+      EnableDnsHostnames: true
+      EnableDnsSupport: true      
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-vpc"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: vpc
+        - Key: Provisioner
+          Value: cloudformation
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-igw"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: Internet-gw
+        - Key: Provisioner
+          Value: cloudformation
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PublicSubnetACidr" ]
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-publicSubnetA"
+        - Key: Reachability
+          Value: public
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: public-subnet
+        - Key: Provisioner
+          Value: cloudformation
+  PrivateSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PrivateSubnetACidr"]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-privateSubnetA"
+        - Key: Reachability
+          Value: private
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: private-subnet
+        - Key: Provisioner
+          Value: cloudformation
+  PublicSubnetB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PublicSubnetBCidr"]
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-publicSubnetB"
+        - Key: Reachability
+          Value: public
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: public-subnet
+        - Key: Provisioner
+          Value: cloudformation
+  PrivateSubnetB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PrivateSubnetBCidr"]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-privateSubnetB"
+        - Key: Reachability
+          Value: private
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: private-subnet
+        - Key: Provisioner
+          Value: cloudformation
+  PublicSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PublicSubnetCCidr"]
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-publicSubnetC"
+        - Key: Reachability
+          Value: public
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: public-subnet
+        - Key: Provisioner
+          Value: cloudformation
+  PrivateSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: !FindInMap [EnvironmentNetworkMap, !Ref Environment, "PrivateSubnetCCidr"]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-privateSubnetC"
+        - Key: Reachability
+          Value: private
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: private-subnet
+        - Key: Provisioner
+          Value: cloudformation
+
+  ################### Primary NAT ###############
+  EIPA:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-EIPA"
+  
+  NatGatewayA:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt 'EIPA.AllocationId'
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-NatGatewayA"
+
+  EIPB:
+    Condition: MultiNat
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-EIPB"
+
+  NatGatewayB:
+    Condition: MultiNat
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt 'EIPB.AllocationId'
+      SubnetId: !Ref PublicSubnetB
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-NatGatewayB"
+
+  EIPC:
+    Condition: MultiNat
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-EIPC"
+  
+  NatGatewayC:
+    Condition: MultiNat
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt 'EIPC.AllocationId'
+      SubnetId: !Ref PublicSubnetC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-NatGatewayC"
+
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-public-rt"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: public-rt
+        - Key: Provisioner
+          Value: cloudformation
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-private-rt"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: ProductComponent
+          Value: private-rt
+        - Key: Provisioner
+          Value: cloudformation
+  
+  ######### Multiple Routes for multiple NAT Gateways
+  # created Conditionally if MultiNatEnable is true
+  PrivateRouteTableA:
+    Condition: MultiNat
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-private-rtA"
+  PrivateRouteTableB:
+    Condition: MultiNat
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-private-rtB"
+  PrivateRouteTableC:
+    Condition: MultiNat
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-private-rtC"
+  #############################################################################
+  ##### ROUTE TABLE ASSOCIATIONS #####
+  #############################################################################  
+
+  RouteTableAssociationPublicA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  RouteTableAssociationPrivateA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      # RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !If
+      - MultiNat
+      - !Ref PrivateRouteTableA
+      - !Ref PrivateRouteTable
+  RouteTableAssociationPublicB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+  RouteTableAssociationPrivateB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !If
+      - MultiNat
+      - !Ref PrivateRouteTableB
+      - !Ref PrivateRouteTable
+  RouteTableAssociationPublicC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnetC
+      RouteTableId: !Ref PublicRouteTable
+  RouteTableAssociationPrivateC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnetC
+      # RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !If 
+      - MultiNat
+      - !Ref PrivateRouteTableC
+      - !Ref PrivateRouteTable
+
+  PublicRouteTableInternetRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+  
+  # Only created if there is a single NAT Gateway  -- Need to modify and start
+  PrivateRouteTableInternetRoute:
+    Condition: SingleNat
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGatewayA
+
+  ######## Mutiple Routes
+  # Conditionally created if MultiNatEnable is true
+  PrivateRouteTableInternetRouteA:
+    Condition: MultiNat
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGatewayA
+  
+  PrivateRouteTableInternetRouteB:
+    Condition: MultiNat
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGatewayB
+  
+  PrivateRouteTableInternetRouteC:
+    Condition: MultiNat
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableC
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGatewayC
+  
+
+###########################################################################
+# Section: Outputs
+###########################################################################
+Outputs:
+  VPC:
+    Description: 'VPC.'
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPC'
+  PublicSubnets:
+    Description: 'Subnets public.'
+    Value: !Join [',', [!Ref PublicSubnetA, !Ref PublicSubnetB, !Ref PublicSubnetC]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnets'
+  PrivateSubnets:
+    Description: 'Subnets private.'
+    Value: !Join [',', [!Ref PrivateSubnetA, !Ref PrivateSubnetB, !Ref PrivateSubnetC]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnets'
+  PublicSubnetA:
+    Description: 'Subnet A public.'
+    Value: !Ref PublicSubnetA
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetA'
+  PrivateSubnetA:
+    Description: 'Subnet A private.'
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnetA'
+  PublicSubnetB:
+    Description: 'Subnet B public.'
+    Value: !Ref PublicSubnetB
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetB'
+  PrivateSubnetB:
+    Description: 'Subnet B private.'
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnetB'
+  PublicSubnetC:
+    Description: 'Subnet C public.'
+    Value: !Ref PublicSubnetC
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetC'
+  PrivateSubnetC:
+    Description: 'Subnet C private.'
+    Value: !Ref PrivateSubnetC
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnetC'
+  PrivateRouteTable:
+    Description: 'Route table private.'
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateRouteTable'
+  PublicRouteTable:
+    Description: 'Route table public.'
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicRouteTable'
+  VpcStackName:
+     Value: !Sub '${AWS::StackName}'
