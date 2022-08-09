@@ -1,0 +1,101 @@
+# Version: 1.0
+# stack-name eks-cluster-${Environment}
+
+AWSTemplateFormatVersion: "2010-09-09"
+###########################################################################
+# Section: Description
+###########################################################################
+Description: >
+  For eks cluster
+
+###########################################################################
+# Section: Metadata
+###########################################################################
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "Environment"
+      Parameters:
+        - Environment    
+    -
+      Label:
+        default: "Prodcut Parameter"
+      Parameters:
+        - ProductName
+
+    ParameterLabels:
+      Environment:
+        default: "The environment where the resources will be created"
+      ProductName:
+        default: "Name of the Product"
+
+###########################################################################
+# Section: Parameters
+###########################################################################
+Parameters:
+  Environment:
+    Description: "Environment"
+    Type: String
+    ConstraintDescription: "Must be in the set of allowed values"
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - production
+      - taskcatTest
+
+  ProductName:
+    Type: String
+    Description: "product Name"
+    Default: cloudtech
+    AllowedValues:
+     - cloudtech
+  
+  EksClusterName:
+    Type: String
+    Description: "The name of the Amazon EKS cluster to apply the Fargate profile to."
+
+  # NamespacesA:
+  #   Type: String
+  #   Description: "The Kubernetes namespace that the selector should match."
+  
+  PodExecutionRoleArn:
+    Type: String
+    Description: "The Amazon Resource Name (ARN) of the IAM role that provides permissions for the Kubernetes control plane to make calls to AWS API operations on your behalf."
+
+  PrivateSubnetA:
+    Type: String
+
+  PrivateSubnetB:
+    Type: String
+
+  PrivateSubnetC:
+    Type: String
+    
+###########################################################################
+# Section: Resources
+###########################################################################
+Resources:
+  EksFargateProfileA:
+    Type: AWS::EKS::FargateProfile
+    Properties: 
+      ClusterName: !Ref EksClusterName
+      FargateProfileName: !Sub "cf-${ProductName}-${Environment}-eks_fargate_Profile"
+      PodExecutionRoleArn: !Ref PodExecutionRoleArn
+      Selectors: 
+        - Namespace: !Sub "cf-${ProductName}-${Environment}-namespace"
+      Subnets: 
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+        - !Ref PrivateSubnetC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-eks_fargate_Profile"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: Eks-Fargate-Profile
+        - Key: Provisioner
+          Value: cloudformation
