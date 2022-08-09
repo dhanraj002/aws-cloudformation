@@ -1,0 +1,129 @@
+---
+# Version: 1.0
+# stack-name eks-cluster-${Environment}
+
+AWSTemplateFormatVersion: "2010-09-09"
+###########################################################################
+# Section: Description
+###########################################################################
+Description: >
+  For eks cluster
+
+###########################################################################
+# Section: Metadata
+###########################################################################
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "Environment"
+      Parameters:
+        - Environment    
+    -
+      Label:
+        default: "Prodcut Parameter"
+      Parameters:
+        - ProductName
+    -
+      Label:
+        default: "EKS Parameter"
+      Parameters:
+        - Version
+
+    ParameterLabels:
+      Environment:
+        default: "The environment where the resources will be created"
+      ProductName:
+        default: "Name of the Product"
+      Version: 
+        default: "The Kubernetes version"
+
+###########################################################################
+# Section: Parameters
+###########################################################################
+Parameters:
+  Environment:
+    Description: "Environment"
+    Type: String
+    ConstraintDescription: "Must be in the set of allowed values"
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - production
+      - taskcatTest
+
+  ProductName:
+    Type: String
+    Description: "product Name"
+    Default: cloudtech
+    AllowedValues:
+     - cloudtech
+  
+  Version: 
+    Type: String
+    Description: "The desired Kubernetes version for your cluster"
+    Default: 1.22
+  
+  EksRoleArn:
+    Type: String
+    Description: "The Amazon Resource Name (ARN) of the IAM role that provides permissions for the Kubernetes control plane to make calls to AWS API operations on your behalf."
+  
+  # ControlPlaneSecurityGroup:
+  #   Type: String
+    # Description: "Security group for the elastic network interfaces between the control plane and the worker nodes"
+  PublicSubnetA:
+    Type: String
+  PublicSubnetB:
+    Type: String
+  PublicSubnetC:
+    Type: String
+  PrivateSubnetA:
+    Type: String
+  PrivateSubnetB:
+    Type: String
+  PrivateSubnetC:
+    Type: String
+
+###########################################################################
+# Section: Resources
+###########################################################################
+Resources:
+  EksClusterControlPlane:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub  "cf-${ProductName}-${Environment}-eks-cluster"
+      Version: !Ref Version
+      RoleArn: !Ref  EksRoleArn
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: false
+        EndpointPublicAccess: true
+        PublicAccessCidrs:
+          - 0.0.0.0/0
+        # SecurityGroupIds:
+        #   - !Ref ControlPlaneSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnetA
+          - !Ref PublicSubnetB
+          - !Ref PublicSubnetC
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+          - !Ref PrivateSubnetC
+      Tags:
+        - Key: Name
+          Value: !Sub "cf-${ProductName}-${Environment}-eks-cluster"
+        - Key: EnvName
+          Value: !Ref Environment
+        - Key: Component
+          Value: Eks-cluster
+        - Key: Provisioner
+          Value: cloudformation
+
+###########################################################################
+# Section: Outputs
+###########################################################################
+Outputs:
+  EksClusterControlPlane:
+    Description: "Eks Cluster Name"
+    Value: !Ref EksClusterControlPlane
